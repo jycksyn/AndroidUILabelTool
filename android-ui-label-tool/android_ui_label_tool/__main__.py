@@ -6,6 +6,25 @@ from PIL import Image, ImageDraw
 
 bounds_pattern = re.compile(r'\[(?P<left>\d+),(?P<top>\d+)\]\[(?P<right>\d+),(?P<bottom>\d+)\]')
 
+class Bounds:
+    def __init__(self, left: int, top: int, right: int, bottom: int):
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
+        
+    @staticmethod
+    def from_node(node: ET.Element) -> 'Bounds | None':
+        bounds: str = node.get('bounds') #type: ignore
+        match = bounds_pattern.match(bounds)
+        if match is None:
+            return None
+        left, top, right, bottom = map(int, match.groups())
+        return Bounds(left, top, right, bottom)
+    
+    def to_list(self) -> list[int]:
+        return [self.left, self.top, self.right, self.bottom]
+
 class Args(Tap):
     input_dir: Path = Path.cwd()
     output_dir: Path = input_dir
@@ -20,6 +39,11 @@ def find_leaves(node: ET.Element) -> list[ET.Element]:
         leaves.extend(find_leaves(child))
     return leaves
 
+def add_annotations(bounds: list[Bounds], im: Image.Image):
+    draw = ImageDraw.Draw(im)
+    for bound in bounds:
+        draw.rectangle(bound.to_list(), outline='yellow', width=5)
+
 def process_xml(xml_file: Path, overwrite: bool):
     png_file = xml_file.with_suffix(".png")
     if not png_file.exists():
@@ -27,16 +51,11 @@ def process_xml(xml_file: Path, overwrite: bool):
     tree = ET.parse(xml_file)
     root = tree.getroot()
     leaves = find_leaves(root)
-    leaves = [node for node in leaves if node.tag == 'node' and bounds_pattern.match(node.get('bounds', '')) is not None]
+    bounds = [Bounds.from_node(node) for node in leaves if node.tag == 'node']
+    bounds = [b for b in bounds if b is not None]
 
     with Image.open(png_file) as im:
-        draw = ImageDraw.Draw(im)
-        for leaf in leaves:
-            bounds: str = leaf.get('bounds') # type: ignore
-            match = bounds_pattern.match(bounds)
-            if match is not None:
-                left, top, right, bottom = map(int, match.groups())
-                draw.rectangle([left, top, right, bottom], outline='yellow', width=5)
+        add_annotations(bounds, im)
         output_file = p.output_dir / (xml_file.stem + "_highlighted.png")
         if output_file.exists() and not overwrite:
             raise ValueError(f"Output file {output_file} already exists")
