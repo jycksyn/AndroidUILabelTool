@@ -1,14 +1,19 @@
 from pathlib import Path
 from tap import Tap
 import xml.etree.ElementTree as ET 
+import re
+
+bounds_pattern = re.compile(r'\[(?P<left>\d+),(?P<top>\d+)\]\[(?P<right>\d+),(?P<bottom>\d+)\]')
 
 class Args(Tap):
     file_path: Path = Path.cwd()
 
-def find_leaves(node: ET.Element):
+def find_leaves(node: ET.Element) -> list[ET.Element]:
     children = [*node.findall('*')]
     if len(children) == 0:
-        return [node]
+        if node.tag == 'node' and bounds_pattern.match(node.get('bounds', '')) is not None:
+            return [node]
+        return []
     leaves: list[ET.Element] = []
     for child in children:
         leaves.extend(find_leaves(child))
