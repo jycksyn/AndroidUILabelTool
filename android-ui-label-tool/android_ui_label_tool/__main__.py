@@ -44,7 +44,7 @@ def add_annotations(bounds: list[Bounds], im: Image.Image):
     for bound in bounds:
         draw.rectangle(bound.to_list(), outline='yellow', width=5)
 
-def process_xml(xml_file: Path, overwrite: bool):
+def process_xml(xml_file: Path, output_dir: Path, overwrite: bool):
     png_file = xml_file.with_suffix(".png")
     if not png_file.exists():
         raise ValueError(f"Corresponding PNG file {png_file} does not exist")
@@ -56,26 +56,33 @@ def process_xml(xml_file: Path, overwrite: bool):
 
     with Image.open(png_file) as im:
         add_annotations(bounds, im)
-        output_file = p.output_dir / (xml_file.stem + "_highlighted.png")
+        output_file = output_dir / (xml_file.stem + "_highlighted.png")
         if output_file.exists() and not overwrite:
             raise ValueError(f"Output file {output_file} already exists")
         im.save(output_file, "PNG")
 
-if __name__ == "__main__":
-    parser = Args()
-
-    p = parser.parse_args()
+def validate_args(p: Args):
     if not (p.input_dir.is_dir() and p.input_dir.exists()):
         raise ValueError(f"Folder {p.input_dir} does not exist")
     
     if not (p.output_dir.is_dir() and p.output_dir.exists()):
         raise ValueError(f"Output folder {p.output_dir} does not exist")
+    
 
-    xml_files = p.input_dir.glob("*.xml")
-    for xml_file in xml_files:
-        try:
-            process_xml(xml_file, p.overwrite)
-        except Exception as e:
-            print(f"Error processing {xml_file}: {e}")
+if __name__ == "__main__":
+    parser = Args()
+
+    p = parser.parse_args()
+
+    try:
+        validate_args(p)
+        xml_files = p.input_dir.glob("*.xml")
+        for xml_file in xml_files:
+            try:
+                process_xml(xml_file, p.output_dir, p.overwrite)
+            except Exception as e:
+                print(f"Error processing {xml_file}: {e}")
+    except Exception as e:
+        print(f"Error: {e}")
 
     
