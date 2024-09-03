@@ -1,6 +1,6 @@
 # Android UI Dump Labeling Tool
 
-### How to run:
+## How to run:
 #### Arguments:
 * `--input_dir`: The directory where the XML dumps and unannotated PNG files are stored. Defaults to the current working directory.
 * `--output_dir`: The directory where the annotated PNG files will placed. Defaults to the input directory.
